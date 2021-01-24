@@ -6,6 +6,7 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @author Arthur Kupriyanov on 24.01.2021
@@ -37,6 +38,17 @@ public class Bourbon {
         private Object[] lastArgs;
         private final List<StoredData> storedData = new ArrayList<>();
 
+        private Optional<Object> searchInStoredData(Method method, Object[] args) {
+            for (StoredData storedData : this.storedData) {
+                if (storedData.getMethod().equals(method) && Arrays.deepEquals(storedData.getArgs(), args)) {
+                    // если данные есть, то возвращаем сохраненный
+                    return Optional.ofNullable(storedData.getRetObj());
+                }
+            }
+
+            return Optional.empty();
+        }
+
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) {
             lastMockInvocationHandler = this;
@@ -44,16 +56,8 @@ public class Bourbon {
             lastArgs = args;
 
             // проверяем в сохраненных данных
-            for (StoredData storedData : this.storedData) {
-                if (storedData.getMethod().equals(method) && Arrays.deepEquals(storedData.getArgs(), args)) {
-                    // если данные есть, то возвращаем сохраненный
-                    return storedData.getRetObj();
-                }
-            }
+            return searchInStoredData(method, args).orElse(null);
 
-            // иначе возвращаем null,
-            // в случае с Mockito дефолтное значение для примитивов
-            return null;
         }
 
         public void setRetObj(Object retObj) {
